@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sepang District — Land Use Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0B1D35;
+    --navy2:   #122848;
+    --teal:    #0E7A6E;
+    --teal-lt: #16A996;
+    --gold:    #C9902A;
+    --gold-lt: #F0B84A;
+    --slate:   #2E4057;
+    --ash:     #8FA3B1;
+    --bone:    #F5F1EB;
+    --white:   #FFFFFF;
+    --red:     #B94040;
+    --green:   #2E7D52;
+    --chart1:  #2778C4;
+    --chart2:  #2E7D52;
+    --chart3:  #C9902A;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bone);
+    color: var(--navy);
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .page-header {
+    background: var(--navy);
+    padding: 36px 40px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  .page-header::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 38%;
+    background: linear-gradient(135deg, transparent 40%, rgba(14,122,110,0.18) 100%);
+    pointer-events: none;
+  }
+  .page-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--teal), var(--gold), var(--teal-lt));
+  }
+  .header-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--teal-lt);
+    margin-bottom: 10px;
+  }
+  .header-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 30px;
+    font-weight: 700;
+    color: var(--white);
+    line-height: 1.2;
+    margin-bottom: 6px;
+  }
+  .header-sub {
+    font-size: 13px;
+    color: var(--ash);
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+  .header-badge {
+    position: absolute;
+    top: 30px; right: 40px;
+    background: rgba(14,122,110,0.15);
+    border: 1px solid rgba(22,169,150,0.35);
+    border-radius: 6px;
+    padding: 8px 16px;
+    text-align: center;
+  }
+  .header-badge-num {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--teal-lt);
+    display: block;
+  }
+  .header-badge-lbl {
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ash);
+  }
+
+  /* ── METRICS ROW ── */
+  .metrics-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+  }
+  .metric-card {
+    background: var(--white);
+    padding: 20px 24px;
+    border-right: 1px solid rgba(0,0,0,0.07);
+    position: relative;
+    transition: background 0.2s;
+  }
+  .metric-card:last-child { border-right: none; }
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .metric-card:nth-child(1)::before { background: var(--teal); }
+  .metric-card:nth-child(2)::before { background: var(--gold); }
+  .metric-card:nth-child(3)::before { background: var(--red); }
+  .metric-card:nth-child(4)::before { background: var(--green); }
+  .m-label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 1.8px;
+    text-transform: uppercase;
+    color: var(--ash);
+    margin-bottom: 8px;
+  }
+  .m-value {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--navy);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .m-value.pos { color: var(--green); }
+  .m-value.neg { color: var(--red); }
+  .m-sub {
+    font-size: 11px;
+    color: var(--ash);
+    font-weight: 300;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    padding: 28px 32px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  /* ── TAB NAV ── */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    background: var(--white);
+    border-radius: 10px;
+    padding: 5px;
+    margin-bottom: 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    border: 1px solid rgba(0,0,0,0.06);
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 9px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ash);
+    background: transparent;
+    border: none;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: all 0.18s ease;
+    letter-spacing: 0.2px;
+  }
+  .tab-btn:hover { color: var(--navy); background: var(--bone); }
+  .tab-btn.active {
+    background: var(--navy);
+    color: var(--white);
+    box-shadow: 0 2px 8px rgba(11,29,53,0.25);
+  }
+
+  /* ── PANELS ── */
+  .panel { display: none; animation: fadeIn 0.25s ease; }
+  .panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── CHART CARD ── */
+  .chart-card {
+    background: var(--white);
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .card-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--navy);
+    margin-bottom: 3px;
+  }
+  .card-desc {
+    font-size: 12px;
+    color: var(--ash);
+    font-weight: 300;
+    line-height: 1.5;
+    max-width: 500px;
+  }
+  .card-body { padding: 20px 24px 24px; }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+    color: var(--slate);
+    font-weight: 400;
+  }
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ── INSIGHT BOX ── */
+  .insight {
+    background: linear-gradient(135deg, #EBF5F3 0%, #F0F7FF 100%);
+    border: 1px solid rgba(14,122,110,0.2);
+    border-left: 4px solid var(--teal);
+    border-radius: 0 8px 8px 0;
+    padding: 13px 18px;
+    margin-bottom: 20px;
+    font-size: 12.5px;
+    color: var(--slate);
+    line-height: 1.65;
+    font-weight: 400;
+  }
+  .insight strong { color: var(--teal); font-weight: 600; }
+
+  /* ── CANVAS ── */
+  canvas { display: block; }
+
+  /* ── FOOTER ── */
+  .page-footer {
+    text-align: center;
+    padding: 20px 32px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--ash);
+    border-top: 1px solid rgba(0,0,0,0.06);
+    background: var(--white);
+    margin-top: 0;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 680px) {
+    .metrics-bar { grid-template-columns: repeat(2, 1fr); }
+    .header-badge { display: none; }
+    .page-header { padding: 24px 20px; }
+    .main { padding: 16px; }
+    .header-title { font-size: 22px; }
+    .card-header { flex-direction: column; }
+  }
+  @media (max-width: 420px) {
+    .metrics-bar { grid-template-columns: 1fr 1fr; }
+    .tab-btn { font-size: 11px; padding: 8px 8px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="page-header">
+  <p class="header-eyebrow">Geospatial Land Use Report · Selangor, Malaysia</p>
+  <h1 class="header-title">Sepang District<br>Land Use Analysis</h1>
+  <p class="header-sub">Comparative Assessment: 2015 Actual &nbsp;·&nbsp; Local Plan 2025 &nbsp;·&nbsp; Current 2026</p>
+  <div class="header-badge">
+    <span class="header-badge-num">61,900</span>
+    <span class="header-badge-lbl">Hectares total area</span>
+  </div>
+</header>
+
+<!-- METRICS -->
+<div class="metrics-bar">
+  <div class="metric-card">
+    <p class="m-label">Largest Use 2026</p>
+    <p class="m-value">36.0%</p>
+    <p class="m-sub">Agricultural · 22,310 ha</p>
+  </div>
+  <div class="metric-card">
+    <p class="m-label">Vacant Land Emerged</p>
+    <p class="m-value pos">14.7%</p>
+    <p class="m-sub">9,116 ha · new in 2026</p>
+  </div>
+  <div class="metric-card">
+    <p class="m-label">Residential Gap</p>
+    <p class="m-value neg">−54%</p>
+    <p class="m-sub">vs Local Plan 2025 target</p>
+  </div>
+  <div class="metric-card">
+    <p class="m-label">Infrastructure Growth</p>
+    <p class="m-value pos">+284%</p>
+    <p class="m-sub">546 ha → 2,095 ha</p>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TAB NAV -->
+  <nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" role="tab" onclick="showPanel('overview', this)">Overview</button>
+    <button class="tab-btn" role="tab" onclick="showPanel('compare', this)">Plan vs Reality</button>
+    <button class="tab-btn" role="tab" onclick="showPanel('trend', this)">Trend 2015 → 2026</button>
+    <button class="tab-btn" role="tab" onclick="showPanel('gap', this)">Planning Gap</button>
+  </nav>
+
+  <!-- PANEL: OVERVIEW -->
+  <div id="overview" class="panel active">
+    <div class="chart-card">
+      <div class="card-header">
+        <div>
+          <p class="card-title">Land Use Distribution Across All Periods</p>
+          <p class="card-desc">Grouped comparison of 2015 actual, Local Plan 2025 zoning targets, and 2026 observed land use across all major categories in hectares.</p>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#2778C4"></span>2015 Actual</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#2E7D52"></span>Local Plan 2025</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#C9902A"></span>2026 Actual</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="position:relative;width:100%;height:360px;">
+          <canvas id="overviewChart" role="img" aria-label="Grouped bar chart comparing 2015, 2025 plan, and 2026 land use across key categories in Sepang District"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: COMPARE -->
+  <div id="compare" class="panel">
+    <div class="chart-card">
+      <div class="card-header">
+        <div>
+          <p class="card-title">Local Plan 2025 Targets vs 2026 Actuals</p>
+          <p class="card-desc">How far each category fell short of — or exceeded — its planned allocation. Agricultural land is 3× above target; residential, commercial, and industrial are well below.</p>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#2E7D52"></span>Local Plan 2025</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#C9902A"></span>2026 Actual</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="insight"><strong>Key finding:</strong> The Local Plan 2025 set ambitious urban growth targets — but 2026 actuals fall far short across all urban categories, while agricultural land remains 3× higher than planned.</div>
+        <div style="position:relative;width:100%;height:400px;">
+          <canvas id="compareChart" role="img" aria-label="Horizontal bar chart showing Local Plan 2025 targets vs 2026 actuals"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: TREND -->
+  <div id="trend" class="panel">
+    <div class="chart-card">
+      <div class="card-header">
+        <div>
+          <p class="card-title">Net Change 2015 → 2026</p>
+          <p class="card-desc">Absolute hectare change per category over eleven years. Negative values indicate contraction; positive values indicate expansion.</p>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#B94040"></span>Decrease</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#2E7D52"></span>Increase</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="insight"><strong>Dominant shift:</strong> Transportation land appears to have declined by −30,991 ha — but this largely reflects reclassification of KLIA Aeropolis land into commercial, industrial, and utility sub-categories, not physical removal of infrastructure.</div>
+        <div style="position:relative;width:100%;height:360px;">
+          <canvas id="trendChart" role="img" aria-label="Horizontal bar chart showing change in hectares per land use category from 2015 to 2026"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PANEL: GAP -->
+  <div id="gap" class="panel">
+    <div class="chart-card">
+      <div class="card-header">
+        <div>
+          <p class="card-title">Planning Achievement Rate (2026 vs Local Plan 2025)</p>
+          <p class="card-desc">Achievement rate = 2026 actual ÷ Local Plan 2025 target × 100. Values above 100% indicate overshoot; below 100% indicate underdevelopment against the plan.</p>
+        </div>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-swatch" style="background:#2778C4"></span>Above target (>100%)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#C9902A"></span>Near target (60–100%)</span>
+          <span class="legend-item"><span class="legend-swatch" style="background:#B94040"></span>Below target (<60%)</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="insight"><strong>Industrial achieves only 33%</strong> of its Local Plan target — the lowest achievement rate of any category — while Agricultural land sits at <strong>307%</strong> of target, the highest overshoot.</div>
+        <div style="position:relative;width:100%;height:360px;">
+          <canvas id="gapChart" role="img" aria-label="Bar chart showing achievement rate as percentage of Local Plan 2025 targets reached by 2026"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer class="page-footer">
+  Sepang District · Selangor, Malaysia &nbsp;|&nbsp; Study Area: 61,900 ha &nbsp;|&nbsp; Reference Periods: 2015 · 2025 Plan · 2026
+</footer>
+
+<script>
+/* ── PANEL SWITCHING ── */
+function showPanel(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+  if (!window.chartsBuilt) buildCharts();
+}
+
+/* ── SHARED CHART DEFAULTS ── */
+Chart.defaults.font.family = "'DM Sans', sans-serif";
+Chart.defaults.color = '#2E4057';
+
+const gridColor = 'rgba(46,64,87,0.07)';
+const tickColor = '#8FA3B1';
+
+/* ── DATA ── */
+const cats = ['Agricultural','Residential','Transportation','Vacant Land','Water Body','Forest','Infrastructure','Commercial','Industrial','Institution','Open Space'];
+const d2015 = [23210.29,6291.72,39432.42,0,7798.45,2809.59,546.73,2048.25,538.20,1919.84,779.24];
+const dPlan  = [7254.66,14845.88,13165.56,0,4832.64,2809.63,910.78,5386.76,2120.78,3066.22,2264.50];
+const d2026  = [22310.26,6791.72,8441.74,9115.98,3970.99,2420.36,2094.62,2230.93,691.75,1949.32,888.36];
+
+let chartsBuilt = false;
+
+function buildCharts() {
+  chartsBuilt = true;
+
+  /* ── OVERVIEW ── */
+  new Chart(document.getElementById('overviewChart'), {
+    type: 'bar',
+    data: {
+      labels: cats,
+      datasets: [
+        { label: '2015 Actual',      data: d2015, backgroundColor: '#2778C4', borderRadius: 3, borderSkipped: false },
+        { label: 'Local Plan 2025',  data: dPlan,  backgroundColor: '#2E7D52', borderRadius: 3, borderSkipped: false },
+        { label: '2026 Actual',      data: d2026,  backgroundColor: '#C9902A', borderRadius: 3, borderSkipped: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0B1D35',
+          titleColor: '#F5F1EB',
+          bodyColor: '#8FA3B1',
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()} ha` }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 10.5 }, maxRotation: 35, color: tickColor, autoSkip: false },
+          grid: { display: false },
+          border: { color: 'rgba(0,0,0,0.1)' }
+        },
+        y: {
+          ticks: { callback: v => (v/1000).toFixed(0)+'k', font: { size: 11 }, color: tickColor },
+          grid: { color: gridColor },
+          title: { display: true, text: 'Area (hectares)', font: { size: 11 }, color: tickColor },
+          border: { dash: [4,4] }
+        }
+      }
+    }
+  });
+
+  /* ── COMPARE ── */
+  const compareCats = ['Residential','Commercial','Industrial','Institution','Infrastructure','Open Space','Agricultural','Forest','Transportation'];
+  const planVals = [14845.88,5386.76,2120.78,3066.22,910.78,2264.50,7254.66,2809.63,13165.56];
+  const actVals  = [6791.72,2230.93,691.75,1949.32,2094.62,888.36,22310.26,2420.36,8441.74];
+
+  new Chart(document.getElementById('compareChart'), {
+    type: 'bar',
+    data: {
+      labels: compareCats,
+      datasets: [
+        { label: 'Local Plan 2025', data: planVals, backgroundColor: 'rgba(46,125,82,0.85)', borderRadius: 3, borderSkipped: false },
+        { label: '2026 Actual',     data: actVals,  backgroundColor: 'rgba(201,144,42,0.85)', borderRadius: 3, borderSkipped: false }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0B1D35',
+          titleColor: '#F5F1EB',
+          bodyColor: '#8FA3B1',
+          padding: 12, cornerRadius: 8,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString()} ha` }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { callback: v => (v/1000).toFixed(0)+'k ha', font: { size: 11 }, color: tickColor },
+          grid: { color: gridColor },
+          border: { dash: [4,4] }
+        },
+        y: {
+          ticks: { font: { size: 11.5 }, color: tickColor },
+          grid: { display: false },
+          border: { color: 'rgba(0,0,0,0.1)' }
+        }
+      }
+    }
+  });
+
+  /* ── TREND ── */
+  const trendCats = ['Transportation','Agricultural','Water Body','Forest','Residential','Institution','Open Space','Commercial','Industrial','Infrastructure'];
+  const changes = [
+    8441.74-39432.42, 22310.26-23210.29, 3970.99-7798.45, 2420.36-2809.59,
+    6791.72-6291.72,  1949.32-1919.84,   888.36-779.24,   2230.93-2048.25,
+    691.75-538.20,    2094.62-546.73
+  ];
+  const trendColors = changes.map(c => c < 0 ? 'rgba(185,64,64,0.85)' : 'rgba(46,125,82,0.85)');
+
+  new Chart(document.getElementById('trendChart'), {
+    type: 'bar',
+    data: {
+      labels: trendCats,
+      datasets: [{ label: 'Change (ha)', data: changes, backgroundColor: trendColors, borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0B1D35', titleColor: '#F5F1EB', bodyColor: '#8FA3B1',
+          padding: 12, cornerRadius: 8,
+          callbacks: { label: ctx => ` ${ctx.raw >= 0 ? '+' : ''}${ctx.raw.toLocaleString()} ha` }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { callback: v => (v >= 0 ? '+' : '') + (v/1000).toFixed(1)+'k', font: { size: 11 }, color: tickColor },
+          grid: { color: gridColor }, border: { dash: [4,4] }
+        },
+        y: {
+          ticks: { font: { size: 11.5 }, color: tickColor },
+          grid: { display: false }, border: { color: 'rgba(0,0,0,0.1)' }
+        }
+      }
+    }
+  });
+
+  /* ── GAP ── */
+  const gapCats = ['Agricultural','Infrastructure','Transportation','Institution','Open Space','Forest','Residential','Commercial','Industrial'];
+  const planG = [7254.66,910.78,13165.56,3066.22,2264.50,2809.63,14845.88,5386.76,2120.78];
+  const actG  = [22310.26,2094.62,8441.74,1949.32,888.36,2420.36,6791.72,2230.93,691.75];
+  const rates = gapCats.map((_, i) => Math.round(actG[i]/planG[i]*100));
+  const gapColors = rates.map(r => r > 100 ? 'rgba(39,120,196,0.85)' : (r > 60 ? 'rgba(201,144,42,0.85)' : 'rgba(185,64,64,0.85)'));
+
+  new Chart(document.getElementById('gapChart'), {
+    type: 'bar',
+    data: {
+      labels: gapCats,
+      datasets: [{ label: 'Achievement Rate (%)', data: rates, backgroundColor: gapColors, borderRadius: 3, borderSkipped: false }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0B1D35', titleColor: '#F5F1EB', bodyColor: '#8FA3B1',
+          padding: 12, cornerRadius: 8,
+          callbacks: { label: ctx => ` ${ctx.raw}% of plan target achieved` }
+        },
+        annotation: {}
+      },
+      scales: {
+        x: {
+          ticks: { callback: v => v+'%', font: { size: 11 }, color: tickColor },
+          grid: { color: gridColor }, border: { dash: [4,4] }
+        },
+        y: {
+          ticks: { font: { size: 11.5 }, color: tickColor },
+          grid: { display: false }, border: { color: 'rgba(0,0,0,0.1)' }
+        }
+      }
+    }
+  });
+}
+
+buildCharts();
+</script>
+</body>
+</html>
